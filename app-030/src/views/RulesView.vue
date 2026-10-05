@@ -39,15 +39,32 @@ function rangesOf(gender: Gender): FitRange[] {
 /** 边界示例由当前表单里的规则实时算出，用于核对「167.5 归哪档」 */
 const alignExamples = computed(() => {
   const rule = form.value
-  const samples = [167, 167.5, 168, 182, 182.5, 183]
-  return samples.map((cm) => {
+  const samples = [
+    { height: 167, chest: 85.5 },
+    { height: 167.5, chest: 86 },
+    { height: 168, chest: 86.5 },
+    { height: 182, chest: 87.5 },
+    { height: 182.5, chest: 88 },
+    { height: 183, chest: 88.5 }
+  ]
+  return samples.map((sample) => {
     const height = formatHalfUnits(
-      alignToStep(cmToHalfUnits(cm), cmToHalfUnits(rule.heightAnchor), cmToHalfUnits(rule.heightStepCm), rule.boundaryRule)
+      alignToStep(
+        cmToHalfUnits(sample.height),
+        cmToHalfUnits(rule.heightAnchor),
+        cmToHalfUnits(rule.heightStepCm),
+        rule.boundaryRule
+      )
     )
     const chest = formatHalfUnits(
-      alignToStep(cmToHalfUnits(86), cmToHalfUnits(rule.chestAnchor), cmToHalfUnits(rule.chestStepCm), rule.boundaryRule)
+      alignToStep(
+        cmToHalfUnits(sample.chest),
+        cmToHalfUnits(rule.chestAnchor),
+        cmToHalfUnits(rule.chestStepCm),
+        rule.boundaryRule
+      )
     )
-    return { cm, height, chest }
+    return { heightCm: sample.height, chestCm: sample.chest, height, chest }
   })
 })
 
@@ -59,12 +76,25 @@ function fitText(gender: Gender): string {
 
 function validate(): string {
   const rule = form.value
-  if (rule.heightStepCm <= 0) return '身高档位步长必须大于 0'
-  if (rule.chestStepCm <= 0) return '胸围档位步长必须大于 0'
+  const isHalfPrecision = (value: number): boolean =>
+    Number.isFinite(value) && Math.abs(value * 2 - Math.round(value * 2)) < 1e-6
+  if (!(rule.heightStepCm > 0) || !isHalfPrecision(rule.heightStepCm)) return '身高档位步长必须是大于 0 的 0.5cm 整数倍'
+  if (!(rule.chestStepCm > 0) || !isHalfPrecision(rule.chestStepCm)) return '胸围档位步长必须是大于 0 的 0.5cm 整数倍'
+  if (!isHalfPrecision(rule.heightAnchor)) return '身高档位锚点必须支持 0.5cm 精度'
+  if (!isHalfPrecision(rule.chestAnchor)) return '胸围档位锚点必须支持 0.5cm 精度'
+  if (!isHalfPrecision(rule.heightRangeCm.minCm) || !isHalfPrecision(rule.heightRangeCm.maxCm)) {
+    return '身高可判定范围必须支持 0.5cm 精度'
+  }
+  if (!isHalfPrecision(rule.chestRangeCm.minCm) || !isHalfPrecision(rule.chestRangeCm.maxCm)) {
+    return '胸围可判定范围必须支持 0.5cm 精度'
+  }
   if (rule.heightRangeCm.minCm >= rule.heightRangeCm.maxCm) return '身高可判定范围的下限必须小于上限'
   if (rule.chestRangeCm.minCm >= rule.chestRangeCm.maxCm) return '胸围可判定范围的下限必须小于上限'
   for (const group of rule.fitByChestWaistDiff) {
     for (const range of group.ranges) {
+      if (!isHalfPrecision(range.minCm) || !isHalfPrecision(range.maxCm)) {
+        return `${genderLabel[group.gender]} ${range.fit} 型区间必须支持 0.5cm 精度`
+      }
       if (range.minCm > range.maxCm) return `${genderLabel[group.gender]} ${range.fit} 型区间下限大于上限`
     }
     const sorted = [...group.ranges].sort((a, b) => a.minCm - b.minCm)
@@ -188,7 +218,7 @@ async function saveAsNew(): Promise<void> {
       </div>
       <div class="card-body tight">
         <p>
-          <b>身高档：</b>档位 = {{ form.heightAnchor }} + {{ form.heightStepCm }} × round((身高 − {{ form.heightAnchor }}) / {{ form.heightStepCm }})，
+          <b>身高档：</b>档位 = 最接近 {{ form.heightAnchor }} + {{ form.heightStepCm }} × n 的档位；
           边界规则 = {{ form.boundaryRule === 'round_up' ? '边界归上（167.5 归 170）' : '就近归下（167.5 归 165）' }}。
         </p>
         <p>
@@ -204,15 +234,17 @@ async function saveAsNew(): Promise<void> {
           <table class="data-table" style="max-width: 620px">
             <thead>
               <tr>
-                <th>实测值</th>
+                <th>身高实测值</th>
                 <th>身高归入档位</th>
-                <th>胸围 86cm 归入档位</th>
+                <th>胸围实测值</th>
+                <th>胸围归入档位</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="item in alignExamples" :key="item.cm">
-                <td>{{ item.cm }}cm</td>
+              <tr v-for="item in alignExamples" :key="item.heightCm">
+                <td>{{ item.heightCm }}cm</td>
                 <td>{{ item.height }}</td>
+                <td>{{ item.chestCm }}cm</td>
                 <td>{{ item.chest }}</td>
               </tr>
             </tbody>

@@ -148,17 +148,17 @@ export function detailRows(ctx: BaseContext): (string | number)[][] {
   const { rule, project } = ctx
   const rows: (string | number)[][] = [DETAIL_HEADER]
   for (const person of project.persons) {
-    const hasMeasure = person.chestCm > 0 && person.waistCm > 0
+    const hasMeasure = person.chestCm !== null && person.waistCm !== null
     rows.push([
       person.sourceRow ?? '',
       person.name,
       genderLabel(person.gender),
       person.orgUnit,
       person.batch,
-      person.heightCm > 0 ? formatCm(person.heightCm) : '',
+      formatCm(person.heightCm),
       person.weightKg ? formatCm(person.weightKg) : '',
-      person.chestCm > 0 ? formatCm(person.chestCm) : '',
-      person.waistCm > 0 ? formatCm(person.waistCm) : '',
+      formatCm(person.chestCm),
+      formatCm(person.waistCm),
       hasMeasure ? formatCm(chestWaistDiffCm(person.chestCm, person.waistCm)) : '',
       person.result?.ruleSizeCode ?? '',
       person.result?.sizeCode ?? '',
@@ -205,7 +205,7 @@ export function specialRows(ctx: BaseContext): (string | number)[][] {
       formatCm(person.heightCm),
       formatCm(person.chestCm),
       formatCm(person.waistCm),
-      person.chestCm > 0 && person.waistCm > 0 ? formatCm(chestWaistDiffCm(person.chestCm, person.waistCm)) : '',
+      person.chestCm !== null && person.waistCm !== null ? formatCm(chestWaistDiffCm(person.chestCm, person.waistCm)) : '',
       specialFlagLabel(rule, person.specialFlag),
       person.result?.sizeCode ?? '规则未覆盖',
       personStatusLabel(person),

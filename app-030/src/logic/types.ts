@@ -74,10 +74,11 @@ export type Person = {
   /** 班级 / 车间 */
   orgUnit: string
   batch: string
-  heightCm: number
+  /** 空值保留为 null，不允许用 0 冒充实测值参与归并 */
+  heightCm: number | null
   weightKg: number | null
-  chestCm: number
-  waistCm: number
+  chestCm: number | null
+  waistCm: number | null
   specialFlag: string | null
   note: string
   status: PersonStatus

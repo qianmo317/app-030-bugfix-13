@@ -148,10 +148,10 @@ async function save(): Promise<void> {
     gender: draft.gender ?? 'male',
     orgUnit: draft.orgUnit.trim(),
     batch: draft.batch,
-    heightCm: draft.heightCm ?? 0,
+    heightCm: draft.heightCm,
     weightKg: draft.weightKg,
-    chestCm: draft.chestCm ?? 0,
-    waistCm: draft.waistCm ?? 0,
+    chestCm: draft.chestCm,
+    waistCm: draft.waistCm,
     specialFlag: draft.specialFlag,
     note: draft.note,
     status: outcome.status,
@@ -168,6 +168,7 @@ async function save(): Promise<void> {
   sticky.orgUnit = person.orgUnit
   sticky.gender = person.gender
   sticky.batch = person.batch
+  runMerge(current, rule.value)
   savedCount.value += 1
   resetForm()
   persistProject(current, true)

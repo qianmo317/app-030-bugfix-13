@@ -6,6 +6,8 @@ import { computed, reactive, toRaw } from 'vue'
 import type { Project, ProjectKind, SizeRule } from './types'
 import { BUILTIN_RULES, DEFAULT_RULE_VERSION, ruleByVersion } from './sizeRules'
 import { runMerge } from './merge'
+import { analyzeDraft } from './analyze'
+import { normalizeLengthCm } from './precision'
 import {
   STORE_META,
   STORE_PROJECTS,
@@ -40,6 +42,42 @@ function sortProjects(): void {
   store.projects.sort((a, b) => b.updatedAt - a.updatedAt)
 }
 
+/** 兼容旧数据：缺失曾以 0 落盘；历史非半档值按统一取法归到半厘米。 */
+function normalizeStoredProject(project: Project, rule: SizeRule): void {
+  for (const person of project.persons) {
+    for (const key of ['heightCm', 'chestCm', 'waistCm'] as const) {
+      const value = person[key]
+      if (value === null || value === undefined) {
+        if (value === undefined) person[key] = null
+        continue
+      }
+      person[key] = Number.isFinite(value) && value > 0 ? normalizeLengthCm(value) : null
+    }
+    if (person.status !== 'active') continue
+    const outcome = analyzeDraft(
+      {
+        name: person.name,
+        gender: person.gender,
+        orgUnit: person.orgUnit,
+        batch: person.batch,
+        heightCm: person.heightCm,
+        weightKg: person.weightKg,
+        chestCm: person.chestCm,
+        waistCm: person.waistCm,
+        specialFlag: person.specialFlag,
+        note: person.note,
+        sourceRow: person.sourceRow,
+        source: person.source
+      },
+      rule
+    )
+    person.status = outcome.status
+    person.statusReason = outcome.statusReason
+    person.anomaly = outcome.anomaly
+    person.needsConfirm = outcome.needsConfirm
+  }
+}
+
 export async function initStore(): Promise<void> {
   try {
     const [projects, rules, meta] = await Promise.all([
@@ -59,11 +97,20 @@ export async function initStore(): Promise<void> {
     if (missingBuiltin.length > 0) {
       for (const rule of missingBuiltin) await idbPut(STORE_RULES, rule)
     }
+    for (const project of projects) {
+      const projectRule = ruleByVersion(store.rules, project.ruleVersion)
+      normalizeStoredProject(project, projectRule)
+    }
     store.projects = projects
     sortProjects()
     const operator = meta.find((entry) => entry.key === 'operator')
     if (operator) store.operator = operator.value
     store.ready = true
+    for (const project of store.projects) {
+      const projectRule = ruleByVersion(store.rules, project.ruleVersion)
+      runMerge(project, projectRule)
+      await idbPut(STORE_PROJECTS, toRaw(project))
+    }
   } catch (error) {
     store.error = error instanceof Error ? error.message : String(error)
     store.ready = true
@@ -172,6 +219,10 @@ export async function saveRule(rule: SizeRule): Promise<void> {
       : a.effectiveFrom.localeCompare(b.effectiveFrom)
   )
   await idbPut(STORE_RULES, toRaw(rule))
+  for (const project of projectsUsingRule(rule.version)) {
+    runMerge(project, rule)
+    await idbPut(STORE_PROJECTS, toRaw(project))
+  }
 }
 
 export async function deleteRule(version: string): Promise<void> {

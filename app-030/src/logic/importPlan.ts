@@ -5,6 +5,7 @@
 import type { Gender, Person, Project, SizeRule } from './types'
 import { analyzeDraft, makePersonId, duplicateKeyOf, type PersonDraft } from './analyze'
 import { parseLengthCm, parseWeightKg } from './precision'
+import { runMerge } from './merge'
 
 export type ImportFieldKey =
   | 'name'
@@ -300,10 +301,10 @@ export function createPersonFromDraft(draft: PersonDraft, rule: SizeRule, duplic
     gender: draft.gender ?? 'male',
     orgUnit: draft.orgUnit.trim(),
     batch: draft.batch,
-    heightCm: draft.heightCm ?? 0,
+    heightCm: draft.heightCm,
     weightKg: draft.weightKg,
-    chestCm: draft.chestCm ?? 0,
-    waistCm: draft.waistCm ?? 0,
+    chestCm: draft.chestCm,
+    waistCm: draft.waistCm,
     specialFlag: draft.specialFlag,
     note: draft.note,
     status: outcome.status,
@@ -361,6 +362,7 @@ export function applyImport(project: Project, dryRun: DryRun, rule: SizeRule): A
     if (row.kind === 'invalid') result.invalid += 1
     else result.added += 1
   }
+  runMerge(project, rule)
   project.imports.push({
     fingerprint: dryRun.fingerprint,
     fileName: dryRun.fileName,

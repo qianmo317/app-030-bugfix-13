@@ -9,21 +9,39 @@ import { cmToHalfUnits, formatHalfUnits, halfUnitsToCm } from './precision'
 export const BUILTIN_RULES = rawBuiltinRules as unknown as SizeRule[]
 export const DEFAULT_RULE_VERSION = BUILTIN_RULES[0]?.version ?? 'v1.0.0'
 
+function truncDiv(value: number, divisor: number): number {
+  return Math.trunc(value / divisor)
+}
+
 /**
- * 档位对齐：档位 = 锚点 + 步长 × round((值 − 锚点) / 步长)
- * boundaryRule = round_up → 167.5 归 170（半数向上）
- * boundaryRule = nearest  → 167.5 归 165（半数向下）
- * 全部用半厘米整数运算，避免浮点比较。
+ * 档位对齐，入参全部是「半厘米整数」：
+ * boundaryRule = round_up → 正/负半档都向较大档靠（167.5 归 170）
+ * boundaryRule = nearest  → 正/负半档都向离锚点较近且数值较小的档靠（167.5 归 165）
+ * 不用浮点商和 Math.round，避免 0.3 这类中间值经反复编辑后在相邻档之间跳动。
  */
 export function alignToStep(
   units: number,
   anchorUnits: number,
   stepUnits: number,
-  _boundary: BoundaryRule
+  boundary: BoundaryRule
 ): number {
-  if (stepUnits <= 0) return units
+  if (!Number.isInteger(units) || !Number.isInteger(anchorUnits) || !Number.isInteger(stepUnits) || stepUnits <= 0) {
+    return units
+  }
   const delta = units - anchorUnits
-  return anchorUnits + stepUnits * Math.round(delta / stepUnits)
+  const quotient = truncDiv(delta, stepUnits)
+  const remainder = delta - quotient * stepUnits
+  if (remainder > 0) {
+    const twice = remainder * 2
+    const advance = twice > stepUnits || (twice === stepUnits && boundary === 'round_up')
+    return anchorUnits + (quotient + (advance ? 1 : 0)) * stepUnits
+  }
+  if (remainder < 0) {
+    const twice = remainder * 2
+    const retreat = twice < -stepUnits || (twice === -stepUnits && boundary === 'nearest')
+    return anchorUnits + (quotient - (retreat ? 1 : 0)) * stepUnits
+  }
+  return anchorUnits + quotient * stepUnits
 }
 
 export function heightCodeUnits(rule: SizeRule, heightCm: number): number {
@@ -48,17 +66,28 @@ export function rangesFor(rule: SizeRule, gender: Gender): FitRange[] {
   return rule.fitByChestWaistDiff.find((item) => item.gender === gender)?.ranges ?? []
 }
 
-/** 型别判定：胸腰差落在哪个区间（区间端点为闭区间，来自 SizeRule） */
+/** 型别判定：胸腰差落在哪个区间（区间端点为闭区间，来自 SizeRule）。入参为半厘米整数。 */
+export function resolveFitUnits(
+  rule: SizeRule,
+  gender: Gender,
+  diffUnits: number
+): { fit: PatternFit; range: FitRange } | null {
+  const ranges = rangesFor(rule, gender)
+  for (const range of ranges) {
+    const minUnits = cmToHalfUnits(range.minCm)
+    const maxUnits = cmToHalfUnits(range.maxCm)
+    if (diffUnits >= minUnits && diffUnits <= maxUnits) return { fit: range.fit, range }
+  }
+  return null
+}
+
+/** 兼容按 cm 调用的旧入口；规则判定内部优先使用 resolveFitUnits。 */
 export function resolveFit(
   rule: SizeRule,
   gender: Gender,
   diffCm: number
 ): { fit: PatternFit; range: FitRange } | null {
-  const ranges = rangesFor(rule, gender)
-  for (const range of ranges) {
-    if (diffCm >= range.minCm && diffCm <= range.maxCm) return { fit: range.fit, range }
-  }
-  return null
+  return resolveFitUnits(rule, gender, cmToHalfUnits(diffCm))
 }
 
 export function makeSizeCode(heightUnits: number, chestUnits: number, fit: PatternFit): string {
@@ -73,8 +102,8 @@ export function buildSizeCode(
   chestCm: number,
   waistCm: number
 ): { sizeCode: string; fit: PatternFit; heightCode: number; chestCode: number; diffCm: number } | null {
-  const diffCm = (cmToHalfUnits(chestCm) - cmToHalfUnits(waistCm)) / 2
-  const matched = resolveFit(rule, gender, diffCm)
+  const diffUnits = cmToHalfUnits(chestCm) - cmToHalfUnits(waistCm)
+  const matched = resolveFitUnits(rule, gender, diffUnits)
   if (!matched) return null
   const hUnits = heightCodeUnits(rule, heightCm)
   const cUnits = chestCodeUnits(rule, chestCm)
@@ -83,7 +112,7 @@ export function buildSizeCode(
     fit: matched.fit,
     heightCode: halfUnitsToCm(hUnits),
     chestCode: halfUnitsToCm(cUnits),
-    diffCm
+    diffCm: halfUnitsToCm(diffUnits)
   }
 }
 

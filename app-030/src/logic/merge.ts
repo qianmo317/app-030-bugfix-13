@@ -8,9 +8,20 @@ import { anomalyText } from './analyze'
 
 export type MergeResult = { durationMs: number }
 
-/** 按规则计算单人号型；数据不完整或胸腰差不在区间内返回 null（未归并） */
+/** 按规则计算单人号型；数据不完整、超出可判定范围或胸腰差不在区间内返回 null（未归并） */
 export function computeRuleSize(rule: SizeRule, person: Person): { sizeCode: string; fit: 'Y' | 'A' | 'B' | 'C' } | null {
-  if (!person.heightCm || !person.chestCm || !person.waistCm) return null
+  if (
+    person.heightCm === null ||
+    person.chestCm === null ||
+    person.waistCm === null ||
+    person.heightCm < rule.heightRangeCm.minCm ||
+    person.heightCm > rule.heightRangeCm.maxCm ||
+    person.chestCm < rule.chestRangeCm.minCm ||
+    person.chestCm > rule.chestRangeCm.maxCm ||
+    person.waistCm <= 0
+  ) {
+    return null
+  }
   const built = buildSizeCode(rule, person.gender, person.heightCm, person.chestCm, person.waistCm)
   return built ? { sizeCode: built.sizeCode, fit: built.fit } : null
 }

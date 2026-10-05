@@ -66,7 +66,7 @@ export function analyzeDraft(draft: PersonDraft, rule: SizeRule): AnalyzeOutcome
   }
   const gender: Gender = draft.gender
 
-  if (draft.heightCm === null || draft.heightCm <= 0) {
+  if (draft.heightCm === null) {
     return {
       status: 'invalid',
       statusReason: '缺少身高',
@@ -86,7 +86,7 @@ export function analyzeDraft(draft: PersonDraft, rule: SizeRule): AnalyzeOutcome
       messages: ['身高明显异常，已拦截为无效行，请复核后重新录入']
     }
   }
-  if (draft.chestCm === null || draft.chestCm <= 0) {
+  if (draft.chestCm === null) {
     return {
       status: 'invalid',
       statusReason: '缺少胸围（无法判定型别）',
@@ -96,7 +96,7 @@ export function analyzeDraft(draft: PersonDraft, rule: SizeRule): AnalyzeOutcome
       messages: ['缺少胸围']
     }
   }
-  if (draft.waistCm === null || draft.waistCm <= 0) {
+  if (draft.waistCm === null) {
     return {
       status: 'invalid',
       statusReason: '缺少腰围（无法计算胸腰差）',
@@ -106,6 +106,17 @@ export function analyzeDraft(draft: PersonDraft, rule: SizeRule): AnalyzeOutcome
       messages: ['缺少腰围']
     }
   }
+  if (draft.waistCm <= 0) {
+    return {
+      status: 'invalid',
+      statusReason: `腰围 ${draft.waistCm}cm 不合理，不能按 0 参与归并`,
+      anomaly: ['missing_waist'],
+      needsConfirm: true,
+      canMerge: false,
+      messages: ['腰围必须大于 0']
+    }
+  }
+
   if (draft.chestCm < rule.chestRangeCm.minCm || draft.chestCm > rule.chestRangeCm.maxCm) {
     return {
       status: 'invalid',
@@ -124,6 +135,16 @@ export function analyzeDraft(draft: PersonDraft, rule: SizeRule): AnalyzeOutcome
   }
 
   const diffCm = chestWaistDiffCm(draft.chestCm, draft.waistCm)
+  if (diffCm === null) {
+    return {
+      status: 'invalid',
+      statusReason: '缺少胸围或腰围（无法计算胸腰差）',
+      anomaly: ['missing_waist'],
+      needsConfirm: true,
+      canMerge: false,
+      messages: ['缺少胸围或腰围']
+    }
+  }
   if (diffCm < 0) {
     anomaly.push('diff_out_of_range')
     needsConfirm = true

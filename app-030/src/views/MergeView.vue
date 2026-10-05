@@ -133,7 +133,7 @@ const overrideForm = reactive({ sizeCode: '', by: '', reason: '' })
 
 const overrideCandidates = computed(() => {
   const target = overrideTarget.value
-  if (!target) return []
+  if (!target || target.heightCm === null || target.chestCm === null) return []
   const current = rule.value
   const heightBase = alignToStep(
     cmToHalfUnits(target.heightCm),
@@ -623,7 +623,7 @@ const rowLabel = (sizeCode: string, isSpecial: boolean): string =>
               <td class="num">{{ formatCm(person.chestCm) }}</td>
               <td class="num">{{ formatCm(person.waistCm) }}</td>
               <td class="num">
-                {{ person.chestCm > 0 && person.waistCm > 0 ? formatCm(chestWaistDiffCm(person.chestCm, person.waistCm)) : '—' }}
+                {{ person.chestCm !== null && person.waistCm !== null ? formatCm(chestWaistDiffCm(person.chestCm, person.waistCm)) : '—' }}
               </td>
               <td>{{ person.result?.ruleSizeCode || '未归并' }}</td>
               <td>

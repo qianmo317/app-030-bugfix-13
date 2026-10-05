@@ -303,7 +303,7 @@ const genderText = (gender: string): string => (gender === 'male' ? '男' : '女
               <td class="num">{{ formatCm(person.chestCm) }}</td>
               <td class="num">{{ formatCm(person.waistCm) }}</td>
               <td class="num">
-                {{ person.chestCm > 0 && person.waistCm > 0 ? formatCm(chestWaistDiffCm(person.chestCm, person.waistCm)) : '—' }}
+                {{ person.chestCm !== null && person.waistCm !== null ? formatCm(chestWaistDiffCm(person.chestCm, person.waistCm)) : '—' }}
               </td>
               <td>{{ summaryRowLabel(rule, { sizeCode: person.specialFlag ?? '', gender: person.gender, qty: 1, isSpecial: true }) }}</td>
               <td>{{ person.result?.sizeCode || '规则未覆盖' }}</td>
