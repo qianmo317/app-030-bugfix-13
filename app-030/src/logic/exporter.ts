@@ -148,18 +148,21 @@ export function detailRows(ctx: BaseContext): (string | number)[][] {
   const { rule, project } = ctx
   const rows: (string | number)[][] = [DETAIL_HEADER]
   for (const person of project.persons) {
-    const hasMeasure = person.chestCm > 0 && person.waistCm > 0
+    const diffText =
+      person.chestCm !== null && person.waistCm !== null
+        ? formatCm(chestWaistDiffCm(person.chestCm, person.waistCm))
+        : ''
     rows.push([
       person.sourceRow ?? '',
       person.name,
       genderLabel(person.gender),
       person.orgUnit,
       person.batch,
-      person.heightCm > 0 ? formatCm(person.heightCm) : '',
+      person.heightCm !== null ? formatCm(person.heightCm) : '',
       person.weightKg ? formatCm(person.weightKg) : '',
-      person.chestCm > 0 ? formatCm(person.chestCm) : '',
-      person.waistCm > 0 ? formatCm(person.waistCm) : '',
-      hasMeasure ? formatCm(chestWaistDiffCm(person.chestCm, person.waistCm)) : '',
+      person.chestCm !== null ? formatCm(person.chestCm) : '',
+      person.waistCm !== null ? formatCm(person.waistCm) : '',
+      diffText,
       person.result?.ruleSizeCode ?? '',
       person.result?.sizeCode ?? '',
       person.result?.manualOverride ? '是' : '否',
@@ -202,10 +205,12 @@ export function specialRows(ctx: BaseContext): (string | number)[][] {
       genderLabel(person.gender),
       person.orgUnit,
       person.batch,
-      formatCm(person.heightCm),
-      formatCm(person.chestCm),
-      formatCm(person.waistCm),
-      person.chestCm > 0 && person.waistCm > 0 ? formatCm(chestWaistDiffCm(person.chestCm, person.waistCm)) : '',
+      person.heightCm !== null ? formatCm(person.heightCm) : '',
+      person.chestCm !== null ? formatCm(person.chestCm) : '',
+      person.waistCm !== null ? formatCm(person.waistCm) : '',
+      person.chestCm !== null && person.waistCm !== null
+        ? formatCm(chestWaistDiffCm(person.chestCm, person.waistCm))
+        : '',
       specialFlagLabel(rule, person.specialFlag),
       person.result?.sizeCode ?? '规则未覆盖',
       personStatusLabel(person),

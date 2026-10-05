@@ -17,6 +17,7 @@ import {
 } from '../logic/importPlan'
 import { fnv1a, parseDelimitedText, readFileAsText, downloadText, toCsvText } from '../logic/csv'
 import { isXlsxFile, readXlsxRows } from '../logic/xlsx'
+import { runMerge } from '../logic/merge'
 
 const route = useRoute()
 const project = computed(() => getProject(route.params.id as string))
@@ -187,6 +188,8 @@ async function confirmImport(): Promise<void> {
     return
   }
   const applied = applyImport(current, preview, rule.value)
+  // 导入（含更新既有行）后整批重算，避免旧结果残留导致号型跳来跳去
+  runMerge(current, rule.value)
   current.perf = {
     ...(current.perf ?? {}),
     importParseMs: preview.durationMs,

@@ -19,6 +19,19 @@ onMounted(() => {
 
 const summary = computed(() => (project.value ? buildSummary(project.value, rule.value) : null))
 
+// 边界规则（或项目锁定的规则版本）一变，整批人的号型立即按同一取法重算，不依赖手动点「重新归并」
+watch(rule, (current, previous) => {
+  if (project.value && current.version !== previous?.version) {
+    ensureMerged(project.value)
+  }
+})
+
+/** 胸腰差列：缺失数值不按 0 显示，与录入 / 判定 / 导出同一取法 */
+function diffText(person: Person): string {
+  if (person.chestCm === null || person.waistCm === null) return '—'
+  return formatCm(chestWaistDiffCm(person.chestCm, person.waistCm))
+}
+
 const search = ref('')
 const statusFilter = ref<'all' | 'active' | 'pending' | 'invalid' | 'duplicate' | 'overridden' | 'special'>('all')
 const page = ref(1)
@@ -133,7 +146,7 @@ const overrideForm = reactive({ sizeCode: '', by: '', reason: '' })
 
 const overrideCandidates = computed(() => {
   const target = overrideTarget.value
-  if (!target) return []
+  if (!target || target.heightCm === null || target.chestCm === null) return []
   const current = rule.value
   const heightBase = alignToStep(
     cmToHalfUnits(target.heightCm),
@@ -622,9 +635,7 @@ const rowLabel = (sizeCode: string, isSpecial: boolean): string =>
               <td class="num">{{ formatCm(person.heightCm) }}</td>
               <td class="num">{{ formatCm(person.chestCm) }}</td>
               <td class="num">{{ formatCm(person.waistCm) }}</td>
-              <td class="num">
-                {{ person.chestCm > 0 && person.waistCm > 0 ? formatCm(chestWaistDiffCm(person.chestCm, person.waistCm)) : '—' }}
-              </td>
+              <td class="num">{{ diffText(person) }}</td>
               <td>{{ person.result?.ruleSizeCode || '未归并' }}</td>
               <td>
                 <b>{{ person.result?.sizeCode || '—' }}</b>

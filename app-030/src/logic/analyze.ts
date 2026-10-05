@@ -69,7 +69,7 @@ export function analyzeDraft(draft: PersonDraft, rule: SizeRule): AnalyzeOutcome
   if (draft.heightCm === null || draft.heightCm <= 0) {
     return {
       status: 'invalid',
-      statusReason: '缺少身高',
+      statusReason: '缺少身高或身高不是有效数字',
       anomaly: ['missing_height'],
       needsConfirm: true,
       canMerge: false,
@@ -89,7 +89,7 @@ export function analyzeDraft(draft: PersonDraft, rule: SizeRule): AnalyzeOutcome
   if (draft.chestCm === null || draft.chestCm <= 0) {
     return {
       status: 'invalid',
-      statusReason: '缺少胸围（无法判定型别）',
+      statusReason: '缺少胸围或胸围不是有效数字（无法判定型别）',
       anomaly: ['missing_chest'],
       needsConfirm: true,
       canMerge: false,
@@ -99,7 +99,7 @@ export function analyzeDraft(draft: PersonDraft, rule: SizeRule): AnalyzeOutcome
   if (draft.waistCm === null || draft.waistCm <= 0) {
     return {
       status: 'invalid',
-      statusReason: '缺少腰围（无法计算胸腰差）',
+      statusReason: '缺少腰围或腰围不是有效数字（无法计算胸腰差）',
       anomaly: ['missing_waist'],
       needsConfirm: true,
       canMerge: false,

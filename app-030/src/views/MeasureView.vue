@@ -9,7 +9,6 @@ import { downloadText, toCsvText } from '../logic/csv'
 import { runMerge } from '../logic/merge'
 import { detailRows } from '../logic/exporter'
 import type { Gender, Person } from '../logic/types'
-
 const route = useRoute()
 const project = computed(() => getProject(route.params.id as string))
 const rule = computed(() => getRule(project.value?.ruleVersion ?? store.rules[0].version))
@@ -45,6 +44,13 @@ watch(
   },
   { immediate: true }
 )
+
+// 边界规则 / 规则版本一变，整批人按同一取法重算，避免「改回 170 号型却跳档」
+watch(rule, (current, previous) => {
+  if (project.value && current.version !== previous?.version) {
+    runMerge(project.value, current)
+  }
+})
 
 const duplicateIds = computed(() => {
   if (!project.value) return []
@@ -148,10 +154,10 @@ async function save(): Promise<void> {
     gender: draft.gender ?? 'male',
     orgUnit: draft.orgUnit.trim(),
     batch: draft.batch,
-    heightCm: draft.heightCm ?? 0,
+    heightCm: draft.heightCm,
     weightKg: draft.weightKg,
-    chestCm: draft.chestCm ?? 0,
-    waistCm: draft.waistCm ?? 0,
+    chestCm: draft.chestCm,
+    waistCm: draft.waistCm,
     specialFlag: draft.specialFlag,
     note: draft.note,
     status: outcome.status,
@@ -170,6 +176,8 @@ async function save(): Promise<void> {
   sticky.batch = person.batch
   savedCount.value += 1
   resetForm()
+  // 录入即归并：保存的那一刻就按锁定规则与同一取值口径给出号型，不依赖手动重算
+  runMerge(current, rule.value)
   persistProject(current, true)
   saving.value = false
   notice.value = `第 ${current.persons.length} 条（${person.name}）已保存到本机 IndexedDB，断网也不丢`

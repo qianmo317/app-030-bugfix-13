@@ -36,18 +36,23 @@ function rangesOf(gender: Gender): FitRange[] {
   return form.value.fitByChestWaistDiff.find((group) => group.gender === gender)?.ranges ?? []
 }
 
-/** 边界示例由当前表单里的规则实时算出，用于核对「167.5 归哪档」 */
+/** 边界示例由当前表单里的规则实时算出，用于核对「167.5 / 86 归哪档」 */
 const alignExamples = computed(() => {
   const rule = form.value
-  const samples = [167, 167.5, 168, 182, 182.5, 183]
-  return samples.map((cm) => {
-    const height = formatHalfUnits(
-      alignToStep(cmToHalfUnits(cm), cmToHalfUnits(rule.heightAnchor), cmToHalfUnits(rule.heightStepCm), rule.boundaryRule)
-    )
-    const chest = formatHalfUnits(
-      alignToStep(cmToHalfUnits(86), cmToHalfUnits(rule.chestAnchor), cmToHalfUnits(rule.chestStepCm), rule.boundaryRule)
-    )
-    return { cm, height, chest }
+  const heightSamples = [167, 167.5, 168, 182, 182.5, 183]
+  const chestSamples = [85.5, 86, 86.5, 87.5, 88, 88.5]
+  return heightSamples.map((cm, index) => {
+    const chestCm = chestSamples[index]
+    return {
+      cm,
+      chestCm,
+      height: formatHalfUnits(
+        alignToStep(cmToHalfUnits(cm), cmToHalfUnits(rule.heightAnchor), cmToHalfUnits(rule.heightStepCm), rule.boundaryRule)
+      ),
+      chest: formatHalfUnits(
+        alignToStep(cmToHalfUnits(chestCm), cmToHalfUnits(rule.chestAnchor), cmToHalfUnits(rule.chestStepCm), rule.boundaryRule)
+      )
+    }
   })
 })
 
@@ -188,8 +193,8 @@ async function saveAsNew(): Promise<void> {
       </div>
       <div class="card-body tight">
         <p>
-          <b>身高档：</b>档位 = {{ form.heightAnchor }} + {{ form.heightStepCm }} × round((身高 − {{ form.heightAnchor }}) / {{ form.heightStepCm }})，
-          边界规则 = {{ form.boundaryRule === 'round_up' ? '边界归上（167.5 归 170）' : '就近归下（167.5 归 165）' }}。
+          <b>身高档：</b>取最接近 {{ form.heightAnchor }} + {{ form.heightStepCm }} × n 的档位（半厘米整数比较，不用浮点），
+          正好落在两档正中间时，边界规则 = {{ form.boundaryRule === 'round_up' ? '边界归上（167.5 归 170、162.5 归 165）' : '就近归下（167.5 归 165、162.5 归 160）' }}。
         </p>
         <p>
           <b>型别（胸腰差 = 胸围 − 腰围）：</b>男装 {{ fitText('male') }}；女装 {{ fitText('female') }}。
@@ -204,15 +209,17 @@ async function saveAsNew(): Promise<void> {
           <table class="data-table" style="max-width: 620px">
             <thead>
               <tr>
-                <th>实测值</th>
+                <th>身高实测值</th>
                 <th>身高归入档位</th>
-                <th>胸围 86cm 归入档位</th>
+                <th>胸围实测值</th>
+                <th>胸围归入档位</th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="item in alignExamples" :key="item.cm">
                 <td>{{ item.cm }}cm</td>
                 <td>{{ item.height }}</td>
+                <td>{{ item.chestCm }}cm</td>
                 <td>{{ item.chest }}</td>
               </tr>
             </tbody>

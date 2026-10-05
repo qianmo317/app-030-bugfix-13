@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { ensureMerged, getProject, getRule, store } from '../logic/store'
 import { buildSummary, conservationText } from '../logic/merge'
@@ -12,6 +12,11 @@ const project = computed(() => getProject(route.params.id as string))
 const rule = computed(() => getRule(project.value?.ruleVersion ?? store.rules[0].version))
 
 if (project.value) ensureMerged(project.value)
+
+// 边界规则 / 锁定版本一变，整批人立即重算，页面与导出表保持同一取法
+watch(rule, (current, previous) => {
+  if (project.value && current.version !== previous?.version) ensureMerged(project.value)
+})
 
 const summary = computed(() => (project.value ? buildSummary(project.value, rule.value) : null))
 

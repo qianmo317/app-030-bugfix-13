@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { ensureMerged, flushProject, getProject, getRule, store } from '../logic/store'
 import { buildSummary, conservationText } from '../logic/merge'
@@ -24,6 +24,11 @@ const project = computed(() => getProject(route.params.id as string))
 const rule = computed(() => getRule(project.value?.ruleVersion ?? store.rules[0].version))
 
 if (project.value) ensureMerged(project.value)
+
+// 边界规则 / 锁定版本一变先整批重算，导出的表格与页面同档
+watch(rule, (current, previous) => {
+  if (project.value && current.version !== previous?.version) ensureMerged(project.value)
+})
 
 const summary = computed(() => (project.value ? buildSummary(project.value, rule.value) : null))
 const message = ref('')
@@ -303,7 +308,7 @@ const genderText = (gender: string): string => (gender === 'male' ? '男' : '女
               <td class="num">{{ formatCm(person.chestCm) }}</td>
               <td class="num">{{ formatCm(person.waistCm) }}</td>
               <td class="num">
-                {{ person.chestCm > 0 && person.waistCm > 0 ? formatCm(chestWaistDiffCm(person.chestCm, person.waistCm)) : '—' }}
+                {{ person.chestCm !== null && person.waistCm !== null ? formatCm(chestWaistDiffCm(person.chestCm, person.waistCm)) : '—' }}
               </td>
               <td>{{ summaryRowLabel(rule, { sizeCode: person.specialFlag ?? '', gender: person.gender, qty: 1, isSpecial: true }) }}</td>
               <td>{{ person.result?.sizeCode || '规则未覆盖' }}</td>

@@ -74,10 +74,13 @@ export type Person = {
   /** 班级 / 车间 */
   orgUnit: string
   batch: string
-  heightCm: number
+  /** 实测身高（按 0.5cm 精度取整）；缺失 / 非数字 / 超范围为 null，绝不当成 0 参与归并 */
+  heightCm: number | null
   weightKg: number | null
-  chestCm: number
-  waistCm: number
+  /** 实测胸围（按 0.5cm 精度取整）；缺失 / 非数字 / 超范围为 null */
+  chestCm: number | null
+  /** 实测腰围（按 0.5cm 精度取整）；缺失 / 非数字 / 超范围为 null */
+  waistCm: number | null
   specialFlag: string | null
   note: string
   status: PersonStatus
